@@ -23,6 +23,12 @@ $ ethspam | head
 ...
 ```
 
+## TrippyNode Tests
+
+When using ethspam + versus to test private NFT-gated nodes, the RandomAddress() and RandomCall() methods will often fail due to these methods being short-circuited by a custom NFT check. To overcome this I've created an additional cli option allowing you to pass the path to a json file that contains an array of whitelisted addresses.
+
+To whitelist addresses simply use `ethspam -f /path/to/addresses.json`
+
 
 ## License
 
