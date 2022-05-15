@@ -35,6 +35,7 @@ func (gen *idGenerator) Next() int64 {
 type liveState struct {
 	idGen   *idGenerator
 	randSrc rand.Source
+	addresses []string
 
 	currentBlock uint64
 	transactions []eth.Transaction
@@ -61,11 +62,16 @@ func (s *liveState) RandomTransaction() string {
 }
 
 func (s *liveState) RandomAddress() string {
-	if len(s.transactions) == 0 {
-		return ""
+	if len(s.addresses) == 0 {
+		if len(s.transactions) == 0 {
+			return ""
+		}
+		idx := int(s.randSrc.Int63()) % len(s.transactions)
+		return s.transactions[idx].From.String()
+	} else {
+		idx := int(s.randSrc.Int63()) % len(s.addresses)
+		return s.addresses[idx]
 	}
-	idx := int(s.randSrc.Int63()) % len(s.transactions)
-	return s.transactions[idx].From.String()
 }
 
 func (s *liveState) RandomCall() (to, from, input string, block uint64) {
@@ -76,7 +82,12 @@ func (s *liveState) RandomCall() (to, from, input string, block uint64) {
 	if tx.To != nil {
 		to = tx.To.String()
 	}
-	from = tx.From.String()
+	if len(s.addresses) == 0 {
+		from = tx.From.String()
+	} else {
+		idx := int(s.randSrc.Int63()) % len(s.addresses)
+		from = s.addresses[idx]
+	}
 	input = tx.Input.String()
 	block = tx.BlockNumber.UInt64()
 	return
@@ -156,6 +167,7 @@ func (p *stateProducer) Refresh(oldState *liveState) (*liveState, error) {
 	state := liveState{
 		idGen:   oldState.idGen,
 		randSrc: oldState.randSrc,
+		addresses: oldState.addresses,
 
 		currentBlock: b.Number.UInt64(),
 		transactions: txs,

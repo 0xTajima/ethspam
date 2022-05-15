@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"math/rand"
+	"encoding/json"
 	"os"
 	"sort"
 	"time"
@@ -16,13 +18,14 @@ import (
 )
 
 // Version of the binary, assigned during build.
-var Version = "dev"
+var Version = "trippy"
 
 // Options contains the flag options
 type Options struct {
 	Methods      map[string]int64 `short:"m" long:"method" description:"A map from json rpc methods to their weight" default:"eth_getCode:100" default:"eth_getLogs:250" default:"eth_getTransactionByHash:250" default:"eth_blockNumber:350" default:"eth_getTransactionCount:400" default:"eth_getBlockByNumber:400" default:"eth_getBalance:550" default:"eth_getTransactionReceipt:600" default:"eth_call:2000"`
 	Web3Endpoint string           `long:"rpc" description:"Ethereum JSONRPC provider, such as Infura or Cloudflare" default:"https://mainnet.infura.io/v3/af500e495f2d4e7cbcae36d0bfa66bcb"` // Versus API key on Infura
 	RateLimit    float64          `short:"r" long:"ratelimit" description:"rate limit for generating jsonrpc calls"`
+	Addresses    string           `short:"f" long:"file" description:"file of random addresses"`
 
 	Version bool `long:"version" description:"Print version and exit."`
 }
@@ -34,6 +37,7 @@ func exit(code int, format string, args ...interface{}) {
 
 func main() {
 	options := Options{}
+	var addresses []string
 	p, err := flags.NewParser(&options, flags.Default).ParseArgs(os.Args[1:])
 	if err != nil {
 		if p == nil {
@@ -45,6 +49,17 @@ func main() {
 	if options.Version {
 		fmt.Println(Version)
 		os.Exit(0)
+	}
+
+	if len(options.Addresses) > 0 {
+		jsonFile, err := os.Open(options.Addresses)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		defer jsonFile.Close()
+		jsonData, _ := ioutil.ReadAll(jsonFile)
+		_ = json.Unmarshal([]byte(jsonData), &addresses)
 	}
 
 	gen := generator{}
@@ -73,6 +88,7 @@ func main() {
 		state := liveState{
 			idGen:   &idGenerator{},
 			randSrc: randSrc,
+			addresses: addresses,
 		}
 		for {
 			newState, err := mkState.Refresh(&state)
